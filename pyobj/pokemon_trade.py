@@ -147,7 +147,7 @@ def check_and_award_monthly_pokemon(logger):
 
 
 class PokemonTrade:
-    TRADE_VERSION = "01"
+    TRADE_VERSION = "02"
 
     def __init__(self, name, id, level, ability, iv, ev, gender, attacks, individual_id, shiny, logger, refresh_callback, parent_window=None):
         self.name = name
