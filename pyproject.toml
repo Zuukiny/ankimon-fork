@@ -1,0 +1,11 @@
+title = "Ankimon"
+
+[project]
+name = "ankimon"
+version = "1.52"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
