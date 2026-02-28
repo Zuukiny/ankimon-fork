@@ -4,6 +4,7 @@ from typing import Optional
 from ..functions.pokedex_functions import search_pokedex, search_pokedex_by_id
 from ..resources import mainpokemon_path
 from ..pyobj.pokemon_obj import PokemonObject
+from ..singletons import ShowInfoLogger, Translator
 
 # default values to fall back in case of load error
 MAIN_POKEMON_DEFAULT = {
@@ -98,4 +99,23 @@ def save_main_pokemon(main_pokemon: PokemonObject):
     with open(mainpokemon_path, "w", encoding="utf-8") as f:
         json.dump([data], f, indent=4)
 
+def update_main_pokemon_from_dict(pokemon_data: dict) -> bool:
+    """
+    Updates the Main Pokemon json file with the values from the given dictionary.
 
+    Args:
+        pokemon_data: Dictionary containing Pokémon data.
+
+    Raises:
+        FileNotFoundError: If the file referenced by mainpokemon_path does not exist. 
+        TypeError: If the pokemon_data contains non-serializable objects.
+
+    Returns:
+        True if the file was written successfully, otherwise False.
+    """
+    try:
+        with open(mainpokemon_path, "w", encoding="utf-8") as file:
+            json.dump([pokemon_data], file, indent=2)
+        return True
+    except (FileNotFoundError, TypeError):
+        return False
