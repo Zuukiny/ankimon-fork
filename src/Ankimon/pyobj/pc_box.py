@@ -712,6 +712,7 @@ class PokemonPC(QDialog):
             raise ValueError("Could not get the stats information of the Pokémon")
 
         self.pokemon_details_layout = PokemonCollectionDetails(
+            pokemon,
             name=pokemon['name'],
             level=pokemon['level'],
             id=pokemon['id'],
