@@ -10,10 +10,12 @@ from ..resources import mainpokemon_path, mypokemon_path, pokeapi_db_path, moves
 from ..functions.sprite_functions import get_sprite_path
 from datetime import datetime
 import uuid
+from typing import TYPE_CHECKING
 from ..functions.pokedex_functions import search_pokeapi_db_by_id
 from .error_handler import show_warning_with_traceback
 
-from ..pyobj.pokemon_trade_view import PokemonTradeView
+if TYPE_CHECKING: 
+    from ..pyobj.pokemon_trade_view import PokemonTradeView
 
 # --- Module-level functions for Monthly Challenges ---
 
@@ -166,8 +168,11 @@ class PokemonTrade:
     
     """
 
-    # Explain when incremented
+    # TODO: Explain when incremented
     TRADE_VERSION = "02"
+
+    # TODO: Explain what this is
+    _trade_view: 'PokemonTradeView'
 
     def __init__(self, pokemon, name, id, level, ability, iv, ev, gender, attacks, individual_id, shiny, logger, refresh_callback, parent_window=None):
         self.pokemon = pokemon
@@ -193,7 +198,7 @@ class PokemonTrade:
 
     ### Utility Functions ###
 
-    def load_mainpokemon_data(self) -> dict:
+    def _load_mainpokemon_data(self) -> dict:
         """
         Load and return the main Pokémon entry from the file at mainpokemon_path.
 
@@ -241,7 +246,7 @@ class PokemonTrade:
         Check if Trading is possible.
 
         """
-        pokemon_data = self.load_mainpokemon_data()
+        pokemon_data = self._load_mainpokemon_data()
         #print("Self Pokemon:", self.pokemon)
         #print("Loaded Pokemon Data:", pokemon_data)
         #print(self._match_main_pokemon(pokemon_data))
@@ -584,3 +589,6 @@ class PokemonTrade:
 
         except (FileNotFoundError, json.JSONDecodeError) as e:
             show_warning_with_traceback(parent=self.parent_window, exception=e, message="Error updating Pokémon data.")
+    
+    def get_pokemon(self):
+        return self.pokemon
