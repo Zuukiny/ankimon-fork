@@ -14,8 +14,7 @@ from typing import TYPE_CHECKING
 from ..functions.pokedex_functions import search_pokeapi_db_by_id
 from .error_handler import show_warning_with_traceback
 
-if TYPE_CHECKING: 
-    from ..pyobj.pokemon_trade_view import PokemonTradeView
+from ..pyobj.pokemon_trade_view import PokemonTradeView
 
 # --- Module-level functions for Monthly Challenges ---
 
