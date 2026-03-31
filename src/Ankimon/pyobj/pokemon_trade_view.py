@@ -1,5 +1,6 @@
 import json
 import string
+from typing import TYPE_CHECKING
 
 from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QFrame
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor, QMovie, QImage
@@ -9,12 +10,15 @@ from aqt import mw
 
 from ..functions.sprite_functions import get_sprite_path
 
+if TYPE_CHECKING: 
+    from ..pyobj.pokemon_trade import PokemonTrade
+
 class PokemonTradeView():
     PKMN_SPRITE_SIZE = QSize(64, 64)
 
-    def __init__(self, pokemonTradeObj, pokemon, moves_file_path, parent_window=None):
-        self.pokemonTradeObj = pokemonTradeObj
-        self.pokemon_to_trade = pokemon
+    def __init__(self, controller: 'PokemonTrade', pokemon: dict, moves_file_path, parent_window=None):
+        self.controller = controller
+        self.pokemon_to_trade = pokemon # temporary
         self.moves_file_path = moves_file_path # temporary
         self.parent_window = parent_window
     
@@ -101,13 +105,13 @@ class PokemonTradeView():
 
         my_code_display_layout = QHBoxLayout()
 
-        my_code_text = QLineEdit(self.pokemonTradeObj.get_clipboard_info())
+        my_code_text = QLineEdit(self.controller.get_clipboard_info())
         my_code_text.setReadOnly(True)
         my_code_text.setFont(QFont("Courier New", 10))
 
         my_code_copy_button = QPushButton("Copy")
         my_code_copy_button.setToolTip("Copy the trade code to your clipboard")
-        my_code_copy_button.clicked.connect(lambda: self.pokemonTradeObj.copy_to_clipboard(my_code_text.text))
+        my_code_copy_button.clicked.connect(lambda: self.controller.copy_to_clipboard(my_code_text.text))
 
         # Add to HBox – MyCode
         my_code_display_layout.addWidget(my_code_text)
@@ -133,11 +137,11 @@ class PokemonTradeView():
         self.trade_button = QPushButton("Generate Trade Password")
         self.trade_button.setFont(QFont("Arial", 14, QFont.Weight.Bold))
         self.trade_button.setStyleSheet("padding: 10px;")
-        self.trade_button.clicked.connect(lambda: self.generate_and_show_passwords(window))
+        self.trade_button.clicked.connect(lambda: self.controller.generate_and_show_passwords(window))
         main_layout.addWidget(self.trade_button)
 
         window.exec()
-    
+
     def update_other_pokemon_sprite(self, code):
         from PyQt6.QtGui import QMovie
         try:
