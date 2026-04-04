@@ -384,6 +384,10 @@ class PokemonTrade:
         return sprite_path
 
     def get_my_pokemon_code(self):
+        """
+        Returns the code of my pokemon as a string concatenated by a comma as delimiter,
+        e.g.:   100,5,0,0, (...)
+        """
         id = self.pokemon.get('id')
         level = self.pokemon.get('level')
         gender = self._get_gender_from_char()
@@ -393,45 +397,6 @@ class PokemonTrade:
         attacks = self._get_attacks_string()
 
         return f"{id},{level},{gender},{shiny},{ev},{iv},{attacks}"
-
-    def update_other_pokemon_sprite(self, code):
-        from PyQt6.QtGui import QMovie
-        try:
-            parts = code.split(',')
-            if len(parts) > 0 and parts[0].isdigit():
-                pokemon_id = int(parts[0])
-                other_gender = "M"
-                other_shiny = False
-                if len(parts) > 2:
-                    gender_map = {"0": "M", "1": "F", "2": "N"}
-                    other_gender = gender_map.get(parts[2], "M")
-                
-                sprite_path = get_sprite_path(side="front", sprite_type="gif", id=pokemon_id, shiny=other_shiny, gender=other_gender)
-                
-                if hasattr(self, '_other_pokemon_movie') and self._other_pokemon_movie is not None:
-                    self._other_pokemon_movie.stop()
-                    self._other_pokemon_movie.deleteLater()
-                    self._other_pokemon_movie = None
-                other_pokemon_movie = QMovie(sprite_path)
-                self._other_pokemon_movie = other_pokemon_movie
-                
-                def set_other_frame():
-                    frame = other_pokemon_movie.currentImage()
-                    if not frame.isNull():
-                        scaled = QPixmap.fromImage(frame).scaled(sprite_size, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                        self.other_pokemon_sprite_label.setPixmap(scaled)
-                other_pokemon_movie.frameChanged.connect(lambda _: set_other_frame())
-                self.other_pokemon_sprite_label.setMovie(other_pokemon_movie)
-                other_pokemon_movie.start()
-                set_other_frame()
-                name = self.get_pokemon_name_by_id(pokemon_id)
-                self.other_pokemon_name_label.setText(name if name else "Unknown Pokémon")
-            else:
-                self.other_pokemon_sprite_label.setPixmap(QPixmap(":/icons/pokeball.png").scaled(QSize(64, 64), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-                self.other_pokemon_name_label.setText("")
-        except Exception:
-            self.other_pokemon_sprite_label.setPixmap(QPixmap(":/icons/pokeball.png").scaled(QSize(64, 64), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-            self.other_pokemon_name_label.setText("")
 
     def get_pokemon_name_by_id(self, pokemon_id):
         try:
