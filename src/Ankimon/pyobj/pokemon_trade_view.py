@@ -15,6 +15,14 @@ if TYPE_CHECKING:
     from ..pyobj.pokemon_trade import PokemonTrade
 
 class PokemonTradeView():
+    """
+    The View Class of the pokemon trade functionality. It uses a PokemonTradeController instance to retrieve data about
+    the pokemon (MVC).
+    This class only handles user input and display logic and delegates core trading logic to the respective trade controller.
+    """
+
+    
+    # The pokemon sprite size to display during trade code enter
     PKMN_SPRITE_SIZE = QSize(64, 64)
 
     def __init__(self, controller: 'PokemonTrade', pokemon: dict, moves_file_path, parent_window=None):
@@ -24,13 +32,20 @@ class PokemonTradeView():
         self.parent_window = parent_window
     
     def open_trade_window(self):
+        """
+        Setup the UI for trading pokemon with another trainer.
+        The layout consists of three parts:
+            - The window layout containing window settings
+            - The pokemon layout containing info about the pokemon that are up to trade
+            - The code layout containing User Input for the other person's pokemon trade code
+        """
 
         # Window Details
         parent = self.parent_window if self.parent_window is not None else mw
         window = QDialog(parent)
         window.setWindowTitle(f"Trade Pokémon: {string.capwords(self.pokemon_to_trade['name'])}")
         window.setWindowModality(Qt.WindowModality.ApplicationModal)
-        window.setMinimumSize(380, 400)
+        window.setMinimumSize(550, 400)
 
         main_layout = QVBoxLayout(window)
         main_layout.setContentsMargins(20, 20, 20, 20)
@@ -57,10 +72,11 @@ class PokemonTradeView():
         window.exec()
 
     def _setup_trade_pokemon_layout(self) -> QBoxLayout:
-        # TODO: Rename your --> my and other --> their
-
-        """ 
-        Returns Sprite Layout
+        """
+        Returns the layout for the pokemon section.
+        
+        Returns:
+            QBoxLayout: The layout of the pokemon section
         """
         
         sprites_layout = QHBoxLayout()
@@ -115,10 +131,13 @@ class PokemonTradeView():
         # TODO: Remove window parameter
 
         """
-        Returns Trade Layout
+        Returns the layout for the code section.
 
         Args:
             window: TEMPORARY - Contains reference to this window instance
+        
+        Returns:
+            QBoxLayout: The layout of the pokemon section
         """
 
         trade_code_layout = QVBoxLayout() # Contains QObjects layouts from both trade sides
@@ -133,13 +152,13 @@ class PokemonTradeView():
 
         my_code_display_layout = QHBoxLayout() # Contains TextField (Code) and Button (Copy)
 
-        my_code_text = QLineEdit(self.controller.get_clipboard_info())
-        my_code_text.setReadOnly(True)
+        my_code_text = QLineEdit(self.controller.get_my_pokemon_code())
         my_code_text.setFont(QFont("Courier New", 10))
+        my_code_text.setReadOnly(True)
 
         my_code_copy_button = QPushButton("Copy")
         my_code_copy_button.setToolTip("Copy the trade code to your clipboard")
-        my_code_copy_button.clicked.connect(lambda: self.controller.copy_to_clipboard(my_code_text.text))
+        my_code_copy_button.clicked.connect(lambda: self.controller.copy_to_clipboard(my_code_text.text()))
 
         my_code_display_layout.addWidget(my_code_text)
         my_code_display_layout.addWidget(my_code_copy_button)
@@ -156,6 +175,7 @@ class PokemonTradeView():
         their_code_label.setFont(QFont("Arial", 11, QFont.Weight.Bold))
 
         their_code_text = QLineEdit()
+        their_code_text.setFont(QFont("Courier New", 10))
         their_code_text.setPlaceholderText("Paste trade code here")
         their_code_text.textChanged.connect(lambda text: self._update_pokemon_sprite(text, 1))
         # TODO: Have a look at the editingFinished() signal that QLineEdit throws – might be better in this case?
@@ -174,12 +194,16 @@ class PokemonTradeView():
 
         return trade_code_layout
 
-    def _update_pokemon_sprite(self, code, pokemon_index: int):
-        print("Called: _update_pokemon_sprite")
+    def _update_pokemon_sprite(self, code: str, pokemon_index: int):
         """
+        Update the pokemon sprite using the trade code of the respective pokemon. The pokemon_index determines which pokemon's sprite
+        should update.
         Args:
-            pokemon_index: Is the pokemon index to select when updating the sprite - index 0 being my Pokémon, index 1 being their Pokémon
+            code (str): The trade code of the pokemon
+            pokemon_index (int): The pokemon index to select when updating the sprite - index 0 being my Pokémon, index 1 being their Pokémon
         """
+        print("Called: _update_pokemon_sprite")
+        pkmn_sprite = self.controller.get_sprite_from_code(code)
         pass
     
 
@@ -235,28 +259,3 @@ class PokemonTradeView():
         except Exception as e:
             show_warning_with_traceback(parent=self.parent_window, exception=e, message=f"An error occurred while getting the Pokémon name for ID {pokemon_id}.")
         return str(pokemon_id)
-    
-    def format_gender(self):
-        gender_map = {"M": 0, "F": 1, "N": 2}
-        return gender_map.get(self.pokemon_to_trade['gender'], 3)
-    
-    def format_shiny(self):
-        return 1 if self.pokemon_to_trade['shiny'] else 0
-
-    def ev_string(self):
-        return ','.join(str(value) for value in self.pokemon_to_trade['ev'].values())
-
-    def iv_string(self):
-        return ','.join(str(value) for value in self.pokemon_to_trade['iv'].values())
-
-    def attack_ids(self):
-        return ','.join([str(self.find_move_by_name(attack)) for attack in self.pokemon_to_trade['attacks']])
-
-    def find_move_by_name(self, move_name):
-        with open(self.moves_file_path, 'r', encoding='utf-8') as file:
-            moves_data = json.load(file)
-            move = next((move for move in moves_data.values() if move.get('name').lower() == move_name.lower()), None)
-            if move:
-                return move['num']
-            else:
-                return int(33)
