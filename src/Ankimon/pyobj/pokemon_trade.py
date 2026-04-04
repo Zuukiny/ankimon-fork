@@ -10,7 +10,6 @@ from ..resources import mainpokemon_path, mypokemon_path, pokeapi_db_path, moves
 from ..functions.sprite_functions import get_sprite_path
 from datetime import datetime
 import uuid
-from typing import TYPE_CHECKING
 from ..functions.pokedex_functions import search_pokeapi_db_by_id
 from .error_handler import show_warning_with_traceback
 
@@ -369,18 +368,31 @@ class PokemonTrade:
         clipboard.setText(text)
         showInfo("Trade code copied to clipboard!")
 
-    def get_pokemon_sprite(self, code):
+    def get_sprite_from_code(self, code) -> str:
         """
-        Returns the pokemon sprite for the given code
+        Returns the sprite path based on the given code, e.g.: [312, 32, 1, 0, 0, 0, 0, 13, 75]
         """
+        parts = code.split(',')
+        if not all([isinstance(part, int) for part in parts]):
+            QPixmap(":/icons/pokeball.png").scaled(QSize(64, 64), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
 
-        # 312, 32, 1, 0, 0, 0, 0, 13, 75, ...
+        pokemon_id = parts[0]
+        gender = self._get_gender_from_id(parts[2])
+        shiny = parts[3]
+        sprite_path = get_sprite_path(side="front", sprite_type="gif", id=pokemon_id, shiny=shiny, gender=gender)
 
+        return sprite_path
 
-        pass
+    def get_my_pokemon_code(self):
+        id = self.pokemon.get('id')
+        level = self.pokemon.get('level')
+        gender = self._get_gender_from_char()
+        shiny = self._get_shiny_from_bool()
+        ev = self._get_ev_string()
+        iv = self._get_iv_string()
+        attacks = self._get_attacks_string()
 
-    def get_clipboard_info(self):
-        return "1,2,3,4,5,6,7,8,9"
+        return f"{id},{level},{gender},{shiny},{ev},{iv},{attacks}"
 
     def update_other_pokemon_sprite(self, code):
         from PyQt6.QtGui import QMovie
@@ -554,9 +566,6 @@ class PokemonTrade:
             show_warning_with_traceback(parent=self.parent_window, exception=e, message=f"Pokedex file not found.")
             return None
 
-    def gender_from_id(self, gender_id):
-        return {0: "M", 1: "F", 2: "N"}.get(gender_id, "N/A")
-
     def get_growth_rate(self, pokemon_id):
         try:
             with open(self.pokeapi_db_path, "r", encoding="utf-8") as file:
@@ -591,3 +600,31 @@ class PokemonTrade:
     
     def get_pokemon(self):
         return self.pokemon
+    
+    def _get_gender_from_char(self):
+        gender_map = {"M": 0, "F": 1, "N": 2}
+        return gender_map.get(self.pokemon['gender'], 3)
+
+    def _get_gender_from_id(self, gender_id):
+        return {0: "M", 1: "F", 2: "N"}.get(gender_id, "N/A")
+    
+    def _get_shiny_from_bool(self):
+        return 1 if self.pokemon['shiny'] else 0
+    
+    def _get_ev_string(self):
+        return ','.join(str(value) for value in self.pokemon['ev'].values())
+
+    def _get_iv_string(self):
+        return ','.join(str(value) for value in self.pokemon['iv'].values())
+    
+    def _get_attacks_string(self):
+        return ','.join([str(self.find_move_by_name(attack)) for attack in self.pokemon['attacks']])
+
+    def _find_move_by_name(self, move_name):
+        with open(self.moves_file_path, 'r', encoding='utf-8') as file:
+            moves_data = json.load(file)
+            move = next((move for move in moves_data.values() if move.get('name').lower() == move_name.lower()), None)
+            if move:
+                return move['num']
+            else:
+                return int(33)
