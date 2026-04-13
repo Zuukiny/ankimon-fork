@@ -255,10 +255,8 @@ class PokemonTrade:
         
         PokemonTradeView(
             self,
-            self.pokemon,
-            moves_file_path,
             self.parent_window
-        ).open_trade_window()
+        ).open_trade_code_window()
 
     def generate_password(pokemon: dict) -> str:
         pass
@@ -368,21 +366,51 @@ class PokemonTrade:
         clipboard.setText(text)
         showInfo("Trade code copied to clipboard!")
 
-    def get_sprite_from_code(self, code) -> str:
+    def get_pokemon_display_info(self, code):
         """
-        Returns the sprite path based on the given code, e.g.: [312, 32, 1, 0, 0, 0, 0, 13, 75]
+        Updates the pokemon 
+        If the code is less than 4 digits long, return early since sprite path can't be determined by only three parts
+        If the code contains any Non-Integer, return image of substitute plush
         """
         parts = code.split(',')
-        if not all([isinstance(part, int) for part in parts]):
-            QPixmap(":/icons/pokeball.png").scaled(QSize(64, 64), Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+        if len(parts) < 4:
+            return "", ""
+
+        if not all([isinstance(part.isdigit(), int) for part in parts]):
+            return (
+                ":/icons/pokeball.png",
+                "Their Pokemon"
+            )
+
+        sprite: str = self._get_sprite_from_code(parts)
+        name: str = self._get_pokemon_name_by_id(parts[0])
+
+        return sprite, name
+
+    def _get_sprite_from_code(self, parts) -> str:
+        """
+        Returns the sprite path based on the given code, e.g.: [312, 32, 1, 0, ...] based on the first 4 digits
+        """
+        # TODO: Make the sprite lookup work, even when less then 4 digits have been entered (by using defaults) – This requires not instant lookup
 
         pokemon_id = parts[0]
-        gender = self._get_gender_from_id(parts[2])
+        gender = self._get_gender_from_id(parts[2]) # TODO: Is there a function that does this already?
         shiny = parts[3]
         sprite_path = get_sprite_path(side="front", sprite_type="gif", id=pokemon_id, shiny=shiny, gender=gender)
 
         return sprite_path
 
+    def _get_pokemon_name_by_id(self, pokemon_id):
+        try:
+            with open(self.pokedex_path, 'r', encoding='utf-8') as file:
+                pokedex = json.load(file)
+                for details in pokedex.values():
+                    if details.get('num') == pokemon_id:
+                        return details.get('name', str(pokemon_id))
+        except Exception as e:
+            show_warning_with_traceback(parent=self.parent_window, exception=e, message=f"An error occurred while getting the Pokémon name for ID {pokemon_id}.")
+        return str(pokemon_id)
+    
     def get_my_pokemon_code(self):
         """
         Returns the code of my pokemon as a string concatenated by a comma as delimiter,
@@ -397,17 +425,6 @@ class PokemonTrade:
         attacks = self._get_attacks_string()
 
         return f"{id},{level},{gender},{shiny},{ev},{iv},{attacks}"
-
-    def get_pokemon_name_by_id(self, pokemon_id):
-        try:
-            with open(self.pokedex_path, 'r', encoding='utf-8') as file:
-                pokedex = json.load(file)
-                for details in pokedex.values():
-                    if details.get('num') == pokemon_id:
-                        return details.get('name', str(pokemon_id))
-        except Exception as e:
-            show_warning_with_traceback(parent=self.parent_window, exception=e, message=f"An error occurred while getting the Pokémon name for ID {pokemon_id}.")
-        return str(pokemon_id)
 
     def confirm_trade(self, parent_window):
         from PyQt6.QtWidgets import QMessageBox

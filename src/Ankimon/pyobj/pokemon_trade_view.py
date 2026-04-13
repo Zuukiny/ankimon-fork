@@ -1,8 +1,8 @@
 import json
 import string
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
-from PyQt6.QtWidgets import QDialog, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QFrame
+from PyQt6.QtWidgets import QDialog, QSizePolicy, QVBoxLayout, QLabel, QLineEdit, QPushButton, QHBoxLayout, QFrame
 from PyQt6.QtGui import QPixmap, QFont, QIcon, QColor, QMovie, QImage
 from PyQt6.QtCore import QSize, Qt
 
@@ -11,48 +11,59 @@ from aqt import QBoxLayout
 
 from ..functions.sprite_functions import get_sprite_path
 
+# Prevent cyclic imports when using PokemonTradeController import for type hints
 if TYPE_CHECKING: 
     from ..pyobj.pokemon_trade import PokemonTrade
 
 class PokemonTradeView():
     """
-    The View Class of the pokemon trade functionality. It uses a PokemonTradeController instance to retrieve data about
-    the pokemon (MVC).
+    Part of the Model-View-Controller (MVC) architecture handling Pokemon Trading.
+    It uses a PokemonTradeController instance to retrieve data about the pokemon.
+    A successful trade consists of a trade code and password exchange.
+
     This class only handles user input and display logic and delegates core trading logic to the respective trade controller.
+    Any issues during trade will be presented to the user by this view class
     """
 
     
     # The pokemon sprite size to display during trade code enter
+    # TODO: Check if we need the sprite size – For rescaling the screen, this kind of looks bad
     PKMN_SPRITE_SIZE = QSize(64, 64)
 
-    def __init__(self, controller: 'PokemonTrade', pokemon: dict, moves_file_path, parent_window=None):
+    def __init__(self, controller: 'PokemonTrade', parent_window=None):
         self.controller = controller
-        self.pokemon_to_trade = pokemon # temporary
-        self.moves_file_path = moves_file_path # temporary
         self.parent_window = parent_window
-    
-    def open_trade_window(self):
+
+        # A dict containing all QLabels pokemon sprites that this view object displays with the keys being the variable name
+        self.sprite_collection = {}
+
+        # A dict containing all QLabels pokemon names that this view object displays with the keys being the variable name
+        self.name_collection = {}
+
+    def open_trade_code_window(self):
         """
-        Setup the UI for trading pokemon with another trainer.
+        Opens the UI window for trading pokemon with a given trade code
+
         The layout consists of three parts:
             - The window layout containing window settings
             - The pokemon layout containing info about the pokemon that are up to trade
-            - The code layout containing User Input for the other person's pokemon trade code
+            - The code layout containing User Input for the other person's pokemon trade code     
         """
 
         # Window Details
         parent = self.parent_window if self.parent_window is not None else mw
         window = QDialog(parent)
-        window.setWindowTitle(f"Trade Pokémon: {string.capwords(self.pokemon_to_trade['name'])}")
+        window.setWindowTitle(f"Trade Pokémon: {string.capwords(self.controller.get_pokemon().get('name'))}")
         window.setWindowModality(Qt.WindowModality.ApplicationModal)
         window.setMinimumSize(550, 400)
+        #window.setMinimumSize(200, 200)
 
         main_layout = QVBoxLayout(window)
         main_layout.setContentsMargins(20, 20, 20, 20)
         main_layout.setSpacing(15)
 
         # Trade Caption
-        title_label = QLabel(f"Trading Away: {string.capwords(self.pokemon_to_trade['name'])}")
+        title_label = QLabel(f"Trading Away: {string.capwords(self.controller.get_pokemon().get('name'))}")
         title_label.setFont(QFont("Arial", 18, QFont.Weight.Bold))
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(title_label)
@@ -70,6 +81,11 @@ class PokemonTradeView():
         main_layout.addLayout(code_layout)
 
         window.exec()
+
+    def open_trade_password_window():
+        """
+        Opens the UI window for trading pokemon with a given trade password
+        """
 
     def _setup_trade_pokemon_layout(self) -> QBoxLayout:
         """
@@ -90,23 +106,24 @@ class PokemonTradeView():
         my_pokemon_sprite_label = QLabel()
         my_pokemon_sprite_label.setMaximumSize(self.PKMN_SPRITE_SIZE)
         my_pokemon_sprite_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.sprite_collection.update({'my_pokemon_sprite_label' : my_pokemon_sprite_label})
         
-        my_pokemon_gif_path = get_sprite_path(side="front", sprite_type="gif", id=self.pokemon_to_trade['id'], shiny=self.pokemon_to_trade['shiny'], gender=self.pokemon_to_trade['gender'])
-        my_pokemon_movie = QMovie(my_pokemon_gif_path)
-        my_pokemon_sprite_label.setMovie(my_pokemon_movie)
-        my_pokemon_movie.start()
-        my_pokemon_name_label = QLabel(f"{string.capwords(self.pokemon_to_trade['name'])}")
-        my_pokemon_name_label.setFont(QFont("Arial", 12))
+        my_pokemon_name_label = QLabel(f"{string.capwords(self.controller.get_pokemon().get('name'))}")
+        my_pokemon_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        my_pokemon_name_label.setFont(QFont("Arial", 14))
+        self.name_collection.update({'my_pokemon_name_label' : my_pokemon_name_label})
+
+        self.update_pokemon_display_info(self.controller.get_my_pokemon_code(), my_pokemon_sprite_label, my_pokemon_name_label)
 
         my_pokemon_sprite_layout.addWidget(my_pokemon_sprite_label)
         my_pokemon_sprite_layout.addWidget(my_pokemon_name_label)
         sprites_layout.addLayout(my_pokemon_sprite_layout)
 
         # Arrow Indicator
-        trade_icon_label = QLabel("⟶")
-        trade_icon_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        trade_icon_label.setFont(QFont("", 30))
-        sprites_layout.addWidget(trade_icon_label)
+        trade_arrow_label = QLabel("⟶")
+        trade_arrow_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        trade_arrow_label.setFont(QFont("", 40))
+        sprites_layout.addWidget(trade_arrow_label)
 
         # Pokemon To Receive
         their_pokemon_layout = QVBoxLayout()
@@ -115,14 +132,27 @@ class PokemonTradeView():
         their_pokemon_sprite_label = QLabel()
         their_pokemon_sprite_label.setMaximumSize(self.PKMN_SPRITE_SIZE)
         their_pokemon_sprite_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        their_pokemon_sprite_label.setPixmap(QPixmap(":/icons/pokeball.png").scaled(self.PKMN_SPRITE_SIZE, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation))
-        
-        their_pokemon_name_label = QLabel("")
-        their_pokemon_name_label.setFont(QFont("Arial", 12))
+        self.sprite_collection.update({'their_pokemon_sprite_label' : their_pokemon_sprite_label})
+
+        their_pokemon_name_label = QLabel()
+        their_pokemon_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        their_pokemon_name_label.setFont(QFont("Arial", 14))
+        self.name_collection.update({'their_pokemon_name_label' : their_pokemon_name_label})
+
+        self.update_pokemon_display_info("", their_pokemon_sprite_label, their_pokemon_name_label) # Initialize with defaults
         
         their_pokemon_layout.addWidget(their_pokemon_sprite_label)
         their_pokemon_layout.addWidget(their_pokemon_name_label)
         sprites_layout.addLayout(their_pokemon_layout)
+        
+        ########## DEBUG ##########
+        my_pokemon_sprite_label.setStyleSheet("""background-color: #ffcbd1;""")
+        my_pokemon_name_label.setStyleSheet("""background-color: #aed9e9;""")
+
+        trade_arrow_label.setStyleSheet("""background-color: #ffcbd1;""")
+
+        their_pokemon_sprite_label.setStyleSheet("""background-color: #ffcbd1;""")
+        their_pokemon_name_label.setStyleSheet("""background-color: #aed9e9;""")
 
         return sprites_layout
 
@@ -177,7 +207,7 @@ class PokemonTradeView():
         their_code_text = QLineEdit()
         their_code_text.setFont(QFont("Courier New", 10))
         their_code_text.setPlaceholderText("Paste trade code here")
-        their_code_text.textChanged.connect(lambda text: self._update_pokemon_sprite(text, 1))
+        their_code_text.textChanged.connect(lambda text: self.update_pokemon_display_info(text, self.sprite_collection.get('their_pokemon_sprite_label'), self.name_collection.get('their_pokemon_name_label')))
         # TODO: Have a look at the editingFinished() signal that QLineEdit throws – might be better in this case?
 
         their_trade_code_layout.addWidget(their_code_label)
@@ -194,18 +224,39 @@ class PokemonTradeView():
 
         return trade_code_layout
 
-    def _update_pokemon_sprite(self, code: str, pokemon_index: int):
+    def update_pokemon_display_info(self, code: str, sprite_label: QPixmap, name_label: QLabel):
+        pkmn_sprite, pkmn_name = self.controller.get_pokemon_display_info(code)
+
+        self._update_pokemon_sprite_label(pkmn_sprite, sprite_label)
+        self._update_pokemon_name_label(pkmn_name, name_label)
+        
+
+    def _update_pokemon_sprite_label(self, pkmn_sprite: str, sprite_label: QLabel):
         """
-        Update the pokemon sprite using the trade code of the respective pokemon. The pokemon_index determines which pokemon's sprite
-        should update.
+        Update the pokemon sprite based on the given QLabel by wrapping it in using a QMovie instance
+        The pokemon to update is determined by the given label.
+        
         Args:
-            code (str): The trade code of the pokemon
-            pokemon_index (int): The pokemon index to select when updating the sprite - index 0 being my Pokémon, index 1 being their Pokémon
+            pkmn_sprite (str): The sprite path of the pokemon 
+            label (QLabel): The label to place the sprite in
         """
-        print("Called: _update_pokemon_sprite")
-        pkmn_sprite = self.controller.get_sprite_from_code(code)
-        pass
+        
+        pkmn_movie = QMovie(pkmn_sprite)
+
+        sprite_label.setMovie(pkmn_movie)
+        
+        pkmn_movie.start()
     
+    def _update_pokemon_name_label(self, pkmn_name: str, name_label: QLabel):
+        """
+        Update the pokemon name label determined based on the given string.
+        The label to update is determined by the given name_label
+
+        Args:
+            pkmn_name (str): The name of the pokemon
+            name_label (QLabel): The label to place the name in
+        """
+        name_label.setText(pkmn_name)
 
     def update_other_pokemon_sprite(self, code):
         from PyQt6.QtGui import QMovie
